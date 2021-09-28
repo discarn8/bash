@@ -1,0 +1,85 @@
+#!/bin/bash
+
+: '###########################################################################
+   #   NAME: ldapsearch [A PROD LDAP SEARCH UTIL]                            #
+   #                                                                         #
+   #   Version 1.2                                                           #
+   #   Author: RCombs                                                        #
+   #   Updated: 20210924 1030                                                #
+   #   Purpose: To find LDAP accounts that still exist in LDAP due to        #
+   #            'Subordinate devices'                                        #
+   #   File Locations:                                                       #
+   #              ldapsearch = /usr/local/bin                                #
+   #                    logs = /tmp                                          #
+   #   Suggested Working Dir = /tmp                                          #
+   #                                                                         #
+   ###########################################################################'
+
+#set -xv
+cmdname=${0##*/}
+NOW=$(date +%F-%H%M%S)
+LOGFILE="/tmp/$(echo $NOW)-ldapsearch.log"
+touch $LOGFILE
+HITS=0
+LS=10.10.10.100
+CN="Manager"
+DC1="domain"
+DC2="com"
+
+runuser=`basename ${HOME}|awk '{print $NF}'`
+
+function usage {
+        echo
+        echo "Usage: $cmdname <file-name>"
+        echo
+	echo "Example: ldapsearch /tmp/20200106"
+        exit $1
+}
+
+function nopass {
+        echo
+        echo "The password file at /tmp appears to be missing - please verify it is present and try again"
+        echo
+        exit $1
+}
+
+
+if test -f /tmp/.mpzz; then
+        LPAS="cat /tmp/.mpzz";
+else
+	echo
+        echo "CRITICAL: Password file $LPAS not found. Exiting"
+	nopass 1;
+fi
+
+
+if [ -z "$1" ]; then
+	echo
+	echo "WARNING: No argument supplied. You must specify a file name."
+	usage 1;
+else
+	echo "--== LDAPSEARCH RUNNING as ${runuser} on $NOW ==--" 2>&1 | tee $LOGFILE
+	LDAP_FILE="$1"
+	NOI=$(wc -l < $1 | bc)
+	echo "Running using input file: $1, processing $NOI items"
+        echo "Running using input file: $1, processing $NOI items" >> $LOGFILE
+	echo "Searching for the following IDs:"
+        echo "Searching for the following IDs:" >> $LOGFILE;
+fi
+
+for myid in $(cat $LDAP_FILE); do
+	echo $myid
+	echo $myid >> $LOGFILE
+	/usr/bin/ldapsearch -L -h $LS -x -w $LPAS -D cn=$CN,dc=DC1,dc=$DC2 "(&(uid=$myid))" uid | if grep -qa "uid:"; then echo "WARNING: $myid exists"; echo "WARNING: $myid exists" >> $LOGFILE; fi;
+done
+
+echo  >> $LOGFILE
+echo
+echo "$HITS matches found." 
+echo "$HITS matches found." >> $LOGFILE
+echo
+echo >> $LOGFILE
+echo "Please see $LOGFILE for the results. Execution completed."
+echo "Please see $LOGFILE for the results. Execution completed." >> $LOGFILE
+echo
+echo
