@@ -1,0 +1,10 @@
+#!/usr/bin/ksh
+
+set -A TARGET "nfs1" "nfs2"
+
+for i in "${TARGET[@]}"
+do
+	mount | egrep $1 | cut -d' ' -f1,2,3 | sed "s/^/`hostname` /"
+done
+
+exit
