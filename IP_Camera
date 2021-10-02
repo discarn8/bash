@@ -1,0 +1,59 @@
+#!/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+DISPLAY=:0
+export DISPLAY=:0
+export XAUTHORITY=/home/user/.Xauthority
+
+############################################
+# 
+# Script to manage intermittent IP Cameras
+# and launch a new instance of ffplay on
+# top of the existing instance and then 
+# kill the old one creating a seamless
+# transition. The script checks to verify
+# that the camera is up and running every
+# 2 seconds and if not up in 30 seconds, 
+# the script exits
+# 
+
+a=0
+v=false
+vtimer=0
+
+# Get PID of current ffplay
+PID=$(pgrep -f 192.168.0.5)
+
+# Launch new ffplay on top of existing
+/usr/bin/ffplay -left 0 -top 0 -loglevel quiet -an -i http://192.168.0.5:8081 &
+sleep 5
+
+# Kill old PID
+/bin/kill $PID
+
+# If ffplay is not running, increment a and sleep 1 second
+if ! ps aux | grep -v grep | grep '192.168.0.5:8081'; then
+        a=$((a+1))
+        sleep 1
+        if [ "$a" -eq "30" ]; then
+                break
+        fi
+
+else
+        while [ "$v" != "true" ]; do
+                if /usr/bin/xdotool search --name 192.168.0.5:8081 windowactivate; then
+		        /usr/bin/xdotool search --name 192.168.0.5 windowsize 800 600
+			/usr/bin/xdotool search --name 192.168.0.5 windowmove 0 0
+                        v=true
+                else
+                        set +e
+                        WINDOW_ID=$(/usr/bin/xdotool search --name "Foo*")
+                        set -e
+                        sleep 2
+                        vtimer=$((vtimer+1))
+                        if [ "$vtimer" -eq "15" ]; then
+                                break
+                        fi
+                fi
+        done
+
+fi
